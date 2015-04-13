@@ -6,14 +6,17 @@ import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
+import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.util.Log;
 import android.util.Size;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Helper to manage available cameras and their parameters
@@ -101,6 +104,15 @@ public class CameraHelper {
         //Get the orientation of the camera sensor
         return characteristics.get(
                 CameraCharacteristics.SENSOR_ORIENTATION);
+    }
+
+    public int[] getSupportedEffects(String cameraId)
+            throws CameraAccessException {
+        CameraCharacteristics characteristics =
+                mCameraManager.getCameraCharacteristics(cameraId);
+
+        return characteristics.get(
+                CameraCharacteristics.CONTROL_AVAILABLE_EFFECTS);
     }
 
     /**

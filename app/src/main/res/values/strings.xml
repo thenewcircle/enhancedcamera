@@ -7,4 +7,15 @@
     <string name="button_stop">Stop Recording</string>
     <string name="label_video">Enhanced Video</string>
     <string name="label_image">Enhanced Image</string>
+    <string name="label_effects">Enhanced Effects</string>
+
+    <string name="effect_off">Off</string>
+    <string name="effect_mono">Mono</string>
+    <string name="effect_negative">Negative</string>
+    <string name="effect_solarize">Solarize</string>
+    <string name="effect_sepia">Sepia</string>
+    <string name="effect_posterize">Posterize</string>
+    <string name="effect_whiteboard">Whiteboard</string>
+    <string name="effect_blackboard">Blackboard</string>
+    <string name="effect_aqua">Aqua</string>
 </resources>

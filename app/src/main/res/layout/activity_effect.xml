@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- Controls Overlay Interface-->
+    <HorizontalScrollView
+        android:id="@+id/controls_camera"
+        android:layout_width="match_parent"
+        android:layout_height="?android:actionBarSize"
+        android:layout_alignParentBottom="true"
+        android:orientation="vertical"
+        android:background="#CCC">
+        <RadioGroup
+            android:id="@+id/options_effects"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:padding="8dp"
+            android:orientation="horizontal"/>
+    </HorizontalScrollView>
+
+    <TextureView
+        android:id="@+id/preview"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/controls_camera"/>
+
+</RelativeLayout>

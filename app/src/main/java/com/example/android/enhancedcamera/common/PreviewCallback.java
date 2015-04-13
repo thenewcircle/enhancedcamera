@@ -84,6 +84,14 @@ public class PreviewCallback {
         }
     }
 
+    //Restart preview with existing camera settings
+    public void restartPreview(int effect) throws CameraAccessException {
+        final CaptureRequest.Builder builder = getPreviewRequestBuilder();
+        builder.set(CaptureRequest.CONTROL_EFFECT_MODE, effect);
+        getActiveCaptureSession().setRepeatingRequest(builder.build(),
+                null, null);
+    }
+
     /*
      * Begin streaming preview data.
      */
