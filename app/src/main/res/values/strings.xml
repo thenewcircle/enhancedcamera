@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">EnhancedCamera</string>
+    <string name="camera_back">Back Camera</string>
+    <string name="camera_front">Front Camera</string>
+    <string name="button_capture">Capture Image</string>
+    <string name="button_record">Record Video</string>
+    <string name="button_stop">Stop Recording</string>
+    <string name="label_video">Enhanced Video</string>
+    <string name="label_image">Enhanced Image</string>
+</resources>

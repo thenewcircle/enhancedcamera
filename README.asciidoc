@@ -1,0 +1,5 @@
+= Enhanced Camera
+
+This project was created to support various http://thenewcircle.com/training/android/[NewCircle Android Training] courses.
+
+This application must be run a device running Android 5.0 or later.
