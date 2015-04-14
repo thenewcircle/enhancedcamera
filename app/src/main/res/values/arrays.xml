@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="effects">
+        <item>Off</item>
+        <item>Mono</item>
+        <item>Negative</item>
+        <item>Solarize</item>
+        <item>Sepia</item>
+        <item>Posterize</item>
+        <item>Whiteboard</item>
+        <item>Blackboard</item>
+        <item>Aqua</item>
+    </string-array>
+</resources>

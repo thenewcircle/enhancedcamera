@@ -5,14 +5,16 @@ import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraDevice;
-import android.hardware.camera2.CaptureRequest;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Size;
+import android.util.SparseArray;
 import android.view.TextureView;
+import android.view.View;
 import android.view.WindowManager;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
 
 import com.example.android.enhancedcamera.R;
 import com.example.android.enhancedcamera.common.CameraHelper;
@@ -21,12 +23,15 @@ import com.example.android.enhancedcamera.common.PreviewCallback;
 import java.util.Arrays;
 
 public class ImageEffectsActivity extends Activity
-        implements RadioGroup.OnCheckedChangeListener {
+        implements AdapterView.OnItemSelectedListener {
     private static final String TAG =
             ImageEffectsActivity.class.getSimpleName();
 
-    private RadioGroup mEffectSelector;
+    private Spinner mEffectSelector;
     private TextureView mPreviewTexture;
+
+    private int[] mSupportedEffects;
+    private String[] mSupportedEffectNames;
 
     /* Selected Camera Id */
     private String mBackCameraId = null;
@@ -42,7 +47,7 @@ public class ImageEffectsActivity extends Activity
 
         mCameraHelper = new CameraHelper(this);
 
-        mEffectSelector = (RadioGroup) findViewById(R.id.options_effects);
+        mEffectSelector = (Spinner) findViewById(R.id.selector_effects);
         mPreviewTexture = (TextureView) findViewById(R.id.preview);
 
         if (!discoverCamera()) {
@@ -50,7 +55,13 @@ public class ImageEffectsActivity extends Activity
             return;
         }
 
-        mEffectSelector.setOnCheckedChangeListener(this);
+        ArrayAdapter<CharSequence> adapter = new ArrayAdapter<CharSequence>(
+                this, android.R.layout.simple_spinner_item, mSupportedEffectNames);
+        adapter.setDropDownViewResource(
+                android.R.layout.simple_spinner_dropdown_item);
+        mEffectSelector.setAdapter(adapter);
+
+        mEffectSelector.setOnItemSelectedListener(this);
 
         //While we are visible, do not go to sleep
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -120,13 +131,11 @@ public class ImageEffectsActivity extends Activity
         }
 
         try {
-            int[] effects = mCameraHelper.getSupportedEffects(mBackCameraId);
-            Arrays.sort(effects);
-            for (int effect : effects) {
-                RadioButton item = (RadioButton) getLayoutInflater().inflate(
-                        R.layout.item_effect, mEffectSelector, false);
-                setEffect(item, effect);
-                mEffectSelector.addView(item);
+            mSupportedEffects = mCameraHelper.getSupportedEffects(mBackCameraId);
+            Arrays.sort(mSupportedEffects);
+            mSupportedEffectNames = new String[mSupportedEffects.length];
+            for (int i=0; i < mSupportedEffects.length; i++) {
+                mSupportedEffectNames[i] = getEffectName(mSupportedEffects[i]);
             }
         } catch (CameraAccessException e) {
             Log.w(TAG, "Unable to access camera effects.", e);
@@ -136,49 +145,27 @@ public class ImageEffectsActivity extends Activity
         return true;
     }
 
-    private void setEffect(RadioButton button, int effect) {
-        button.setId(effect);
-        switch (effect) {
-            case CaptureRequest.CONTROL_EFFECT_MODE_MONO:
-                button.setText(R.string.effect_mono);
-                break;
-            case CaptureRequest.CONTROL_EFFECT_MODE_NEGATIVE:
-                button.setText(R.string.effect_negative);
-                break;
-            case CaptureRequest.CONTROL_EFFECT_MODE_SOLARIZE:
-                button.setText(R.string.effect_solarize);
-                break;
-            case CaptureRequest.CONTROL_EFFECT_MODE_SEPIA:
-                button.setText(R.string.effect_sepia);
-                break;
-            case CaptureRequest.CONTROL_EFFECT_MODE_POSTERIZE:
-                button.setText(R.string.effect_posterize);
-                break;
-            case CaptureRequest.CONTROL_EFFECT_MODE_WHITEBOARD:
-                button.setText(R.string.effect_whiteboard);
-                break;
-            case CaptureRequest.CONTROL_EFFECT_MODE_BLACKBOARD:
-                button.setText(R.string.effect_blackboard);
-                break;
-            case CaptureRequest.CONTROL_EFFECT_MODE_AQUA:
-                button.setText(R.string.effect_aqua);
-                break;
-            case CaptureRequest.CONTROL_EFFECT_MODE_OFF:
-            default:
-                button.setText(R.string.effect_off);
-                button.setChecked(true);
-                break;
-        }
+    private String getEffectName(int effect) {
+        String[] names = getResources().getStringArray(R.array.effects);
+        //Effect id is the index into this array
+        return names[effect];
     }
 
     @Override
-    public void onCheckedChanged(RadioGroup group, int checkedId) {
+    public void onItemSelected(AdapterView<?> parent, View view,
+                               int position, long id) {
+        int effect = mSupportedEffects[position];
+        if (mCameraCallback == null) return;
+        
         try {
-            mCameraCallback.restartPreview(checkedId);
+            mCameraCallback.restartPreview(effect);
         } catch (CameraAccessException e) {
             Log.w(TAG, "Unable to set effect value.", e);
         }
     }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> parent) { }
 
     /*
      * Handle state changes regarding the actual camera device

@@ -4,20 +4,19 @@
     android:layout_height="match_parent">
 
     <!-- Controls Overlay Interface-->
-    <HorizontalScrollView
+    <FrameLayout
         android:id="@+id/controls_camera"
         android:layout_width="match_parent"
         android:layout_height="?android:actionBarSize"
         android:layout_alignParentBottom="true"
         android:orientation="vertical"
         android:background="#CCC">
-        <RadioGroup
-            android:id="@+id/options_effects"
+        <Spinner
+            android:id="@+id/selector_effects"
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:padding="8dp"
-            android:orientation="horizontal"/>
-    </HorizontalScrollView>
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"/>
+    </FrameLayout>
 
     <TextureView
         android:id="@+id/preview"
