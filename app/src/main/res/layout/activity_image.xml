@@ -4,7 +4,7 @@
     android:layout_height="match_parent">
 
     <!-- Controls Overlay Interface-->
-    <LinearLayout
+    <RelativeLayout
         android:id="@+id/controls_camera"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -13,15 +13,23 @@
         android:orientation="vertical"
         android:background="#CCC">
         <Button
+            android:id="@+id/button_capture"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_horizontal"
+            android:layout_alignParentStart="true"
             android:text="@string/button_capture"
             android:onClick="onCaptureClick"/>
+        <Spinner
+            android:id="@+id/selector_resolution"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"/>
+
         <RadioGroup
             android:id="@+id/options_camera"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_below="@id/button_capture"
             android:orientation="horizontal">
             <RadioButton
                 android:id="@+id/option_back"
@@ -36,7 +44,7 @@
                 android:layout_weight="1"
                 android:text="@string/camera_front"/>
         </RadioGroup>
-    </LinearLayout>
+    </RelativeLayout>
 
     <TextureView
         android:id="@+id/preview"

@@ -107,9 +107,10 @@ public class ImageSaver implements ImageReader.OnImageAvailableListener {
                     public void onScanCompleted(String path, Uri uri) {
                         Log.i(TAG, "Scanned " + path + ":");
                         Log.i(TAG, "-> uri=" + uri);
-                        Toast.makeText(mContext, "Image Capture Complete",
-                                Toast.LENGTH_SHORT).show();
                     }
                 });
+
+        Toast.makeText(mContext, "Image Capture Complete",
+                Toast.LENGTH_SHORT).show();
     }
 }

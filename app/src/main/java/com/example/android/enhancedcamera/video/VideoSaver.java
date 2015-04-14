@@ -45,6 +45,10 @@ public class VideoSaver {
     }
 
     public void close() {
+        //Last prepare didn't result in a real recording
+        if (mCurrentRecordingFile != null) {
+            mCurrentRecordingFile.delete();
+        }
         mMediaRecorder.release();
     }
 
@@ -59,6 +63,11 @@ public class VideoSaver {
     }
 
     public void setUpMediaRecorder() throws IOException {
+        //Last prepare didn't result in a real recording
+        if (mCurrentRecordingFile != null) {
+            mCurrentRecordingFile.delete();
+        }
+
         mMediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
 
@@ -95,10 +104,10 @@ public class VideoSaver {
                     public void onScanCompleted(String path, Uri uri) {
                         Log.i(TAG, "Scanned " + path + ":");
                         Log.i(TAG, "-> uri=" + uri);
-                        Toast.makeText(mContext, "Video Record Complete",
-                                Toast.LENGTH_SHORT).show();
                     }
                 });
+        Toast.makeText(mContext, "Video Record Complete",
+                Toast.LENGTH_SHORT).show();
 
         //Clear out the media file reference, we're done with it.
         mCurrentRecordingFile = null;

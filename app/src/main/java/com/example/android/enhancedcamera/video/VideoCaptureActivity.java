@@ -13,8 +13,11 @@ import android.util.Size;
 import android.view.TextureView;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.RadioGroup;
+import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.example.android.enhancedcamera.R;
@@ -22,14 +25,17 @@ import com.example.android.enhancedcamera.common.CameraHelper;
 
 import java.io.IOException;
 
-public class VideoCaptureActivity extends Activity
-        implements RadioGroup.OnCheckedChangeListener {
+public class VideoCaptureActivity extends Activity implements
+        RadioGroup.OnCheckedChangeListener,
+        AdapterView.OnItemSelectedListener {
     private static final String TAG =
             VideoCaptureActivity.class.getSimpleName();
 
     private TextureView mPreviewTexture;
     private RadioGroup mCameraSelector;
     private Button mRecordButton;
+    private Spinner mResolutionSelector;
+    private ArrayAdapter<Size> mResolutionAdapter;
 
     /* Front/Back Camera Ids */
     private String mFrontCameraId = null;
@@ -38,7 +44,6 @@ public class VideoCaptureActivity extends Activity
     private CameraHelper mCameraHelper;
     private CameraDevice mCameraDevice;
     private VideoCaptureCallback mCameraCallback;
-    private VideoSaver mVideoSaveTarget;
 
     //Internal tracker of recording state
     private boolean mIsRecording = false;
@@ -50,9 +55,16 @@ public class VideoCaptureActivity extends Activity
 
         mCameraHelper = new CameraHelper(this);
 
+        mResolutionSelector = (Spinner) findViewById(R.id.selector_resolution);
         mPreviewTexture = (TextureView) findViewById(R.id.preview);
         mCameraSelector = (RadioGroup) findViewById(R.id.options_camera);
         mRecordButton = (Button) findViewById(R.id.button_record);
+
+        mResolutionAdapter = new ArrayAdapter<Size>(this,
+                android.R.layout.simple_spinner_item);
+        mResolutionAdapter.setDropDownViewResource(
+                android.R.layout.simple_spinner_dropdown_item);
+        mResolutionSelector.setAdapter(mResolutionAdapter);
 
         if (!discoverCameras()) {
             finish();
@@ -60,6 +72,7 @@ public class VideoCaptureActivity extends Activity
         }
 
         mCameraSelector.setOnCheckedChangeListener(this);
+        mResolutionSelector.setOnItemSelectedListener(this);
 
         //While we are visible, do not go to sleep
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -87,6 +100,33 @@ public class VideoCaptureActivity extends Activity
         closeCamera();
     }
 
+    //Handle resolution change events
+    @Override
+    public void onItemSelected(AdapterView<?> parent, View view,
+                               int position, long id) {
+        setCameraResolution(position);
+    }
+
+    private void setCameraResolution(int selectedPosition) {
+        try {
+            //Image orientation
+            int orientation = mCameraHelper
+                    .getSensorOrientation(mCameraDevice.getId());
+            Size videoSize = mResolutionAdapter.getItem(selectedPosition);
+
+            VideoSaver captureTarget = new VideoSaver(this, videoSize,
+                    orientation);
+            mCameraCallback.setCaptureTarget(captureTarget);
+
+            startPreview();
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> parent) { }
+
     //Handle camera selection events
     @Override
     public void onCheckedChanged(RadioGroup group, int checkedId) {
@@ -99,13 +139,13 @@ public class VideoCaptureActivity extends Activity
     public void onRecordClick(View v) {
         if (mIsRecording) {
             mRecordButton.setText(R.string.button_record);
-            mVideoSaveTarget.stopRecording();
+            mCameraCallback.stopRecording();
             //Restart preview after recording is over
             startPreview();
             mIsRecording = false;
         } else {
             mRecordButton.setText(R.string.button_stop);
-            mVideoSaveTarget.startRecording();
+            mCameraCallback.startRecording();
             mIsRecording = true;
         }
     }
@@ -182,7 +222,7 @@ public class VideoCaptureActivity extends Activity
     //Begin preview, or resume after the latest recording is finished
     private void startPreview() {
         try {
-            mVideoSaveTarget.setUpMediaRecorder();
+            mCameraCallback.setUpMediaRecorder();
             mCameraCallback.startPreviewSession();
         } catch (CameraAccessException e) {
             Log.w(TAG, "Error starting camera preview", e);
@@ -212,10 +252,25 @@ public class VideoCaptureActivity extends Activity
 
                         mCameraCallback = new VideoCaptureCallback(mCameraDevice,
                                 mPreviewTexture.getSurfaceTexture(),
-                                targetPreviewSize,
-                                mVideoSaveTarget);
+                                targetPreviewSize);
 
-                        startPreview();
+                        //Update list of available sizes
+                        StreamConfigurationMap map = mCameraHelper
+                                .getConfiguration(mCameraDevice.getId());
+                        mResolutionAdapter.clear();
+                        for (Size size : map.getOutputSizes(MediaRecorder.class)) {
+                            //Add items that are safe to record
+                            if (CameraHelper.verifyVideoSize(size)) {
+                                mResolutionAdapter.add(size);
+                            }
+                        }
+                        mResolutionAdapter.notifyDataSetChanged();
+                        //If there is already a selection, update resolution here
+                        if (mResolutionSelector.getSelectedItemPosition()
+                                != AdapterView.INVALID_POSITION) {
+                            setCameraResolution(
+                                    mResolutionSelector.getSelectedItemPosition());
+                        }
                     } catch (CameraAccessException e) {
                         Log.w(TAG, "Error starting camera preview", e);
                     }
@@ -243,23 +298,6 @@ public class VideoCaptureActivity extends Activity
     private void openCamera() {
         final String cameraId = getSelectedCameraId();
 
-        //Create the save target
-        try {
-            //Image orientation
-            int orientation = mCameraHelper.getSensorOrientation(cameraId);
-
-            //Choose the proper video save size
-            StreamConfigurationMap map =
-                    mCameraHelper.getConfiguration(cameraId);
-            Size[] availableSizes = map.getOutputSizes(MediaRecorder.class);
-            Size videoSize = CameraHelper.chooseVideoSize(availableSizes);
-
-            mVideoSaveTarget = new VideoSaver(this, videoSize, orientation);
-        } catch (CameraAccessException e) {
-            Log.w(TAG, "Unable to get camera sizes.", e);
-            return;
-        }
-
         try {
             mCameraHelper.openCamera(cameraId, mStateCallback);
         } catch (CameraAccessException e) {
@@ -275,17 +313,13 @@ public class VideoCaptureActivity extends Activity
     private void closeCamera() {
         if (mCameraCallback != null) {
             mCameraCallback.cancelActiveCaptureSession();
+            mCameraCallback.setCaptureTarget(null);
             mCameraCallback = null;
         }
 
         if (mCameraDevice != null) {
             mCameraDevice.close();
             mCameraDevice = null;
-        }
-
-        if (mVideoSaveTarget != null) {
-            mVideoSaveTarget.close();
-            mVideoSaveTarget = null;
         }
     }
 }

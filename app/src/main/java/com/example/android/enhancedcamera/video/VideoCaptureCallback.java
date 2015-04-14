@@ -10,6 +10,7 @@ import android.view.Surface;
 
 import com.example.android.enhancedcamera.common.PreviewCallback;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -26,10 +27,8 @@ public class VideoCaptureCallback extends PreviewCallback {
 
     public VideoCaptureCallback(CameraDevice device,
                                 SurfaceTexture surface,
-                                Size targetPreviewSize,
-                                VideoSaver saver) {
+                                Size targetPreviewSize) {
         super(device, surface, targetPreviewSize);
-        mVideoSaver = saver;
     }
 
     //Request for a preview that supports video
@@ -49,11 +48,30 @@ public class VideoCaptureCallback extends PreviewCallback {
         return builder;
     }
 
+    public void setCaptureTarget(VideoSaver captureTarget) {
+        if (mVideoSaver != null) {
+            mVideoSaver.close();
+        }
+        mVideoSaver = captureTarget;
+    }
+
     @Override
     protected List<Surface> getCaptureTargets() {
         List<Surface> baseTargets = super.getCaptureTargets();
         baseTargets.add(mVideoSaver.getRecorderSurface());
 
         return baseTargets;
+    }
+
+    public void setUpMediaRecorder() throws IOException {
+        mVideoSaver.setUpMediaRecorder();
+    }
+
+    public void startRecording() {
+        mVideoSaver.startRecording();
+    }
+
+    public void stopRecording() {
+        mVideoSaver.stopRecording();
     }
 }

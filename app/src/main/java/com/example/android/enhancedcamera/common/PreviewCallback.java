@@ -97,6 +97,9 @@ public class PreviewCallback {
      */
     public void startPreviewSession()
             throws CameraAccessException {
+        //Cancel any active sessions
+        cancelActiveCaptureSession();
+
         //Preview request contains state we need to reset
         // when we start a new preview session.
         mPreviewRequestBuilder = null;

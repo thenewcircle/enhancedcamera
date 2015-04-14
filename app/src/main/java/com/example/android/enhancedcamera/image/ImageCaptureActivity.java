@@ -13,18 +13,24 @@ import android.util.Size;
 import android.view.TextureView;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.RadioGroup;
+import android.widget.Spinner;
 
 import com.example.android.enhancedcamera.common.CameraHelper;
 import com.example.android.enhancedcamera.R;
 
-public class ImageCaptureActivity extends Activity
-        implements RadioGroup.OnCheckedChangeListener {
+public class ImageCaptureActivity extends Activity implements
+        RadioGroup.OnCheckedChangeListener,
+        AdapterView.OnItemSelectedListener {
     private static final String TAG =
             ImageCaptureActivity.class.getSimpleName();
 
     private TextureView mPreviewTexture;
     private RadioGroup mCameraSelector;
+    private Spinner mResolutionSelector;
+    private ArrayAdapter<Size> mResolutionAdapter;
 
     /* Front/Back Camera Ids */
     private String mFrontCameraId = null;
@@ -33,7 +39,6 @@ public class ImageCaptureActivity extends Activity
     private CameraHelper mCameraHelper;
     private CameraDevice mCameraDevice;
     private SingleImageCaptureCallback mCameraCallback;
-    private ImageSaver mImageSaveTarget;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,8 +47,15 @@ public class ImageCaptureActivity extends Activity
 
         mCameraHelper = new CameraHelper(this);
 
+        mResolutionSelector = (Spinner) findViewById(R.id.selector_resolution);
         mCameraSelector = (RadioGroup) findViewById(R.id.options_camera);
         mPreviewTexture = (TextureView) findViewById(R.id.preview);
+
+        mResolutionAdapter = new ArrayAdapter<Size>(this,
+                android.R.layout.simple_spinner_item);
+        mResolutionAdapter.setDropDownViewResource(
+                android.R.layout.simple_spinner_dropdown_item);
+        mResolutionSelector.setAdapter(mResolutionAdapter);
 
         if (!discoverCameras()) {
             finish();
@@ -51,6 +63,7 @@ public class ImageCaptureActivity extends Activity
         }
 
         mCameraSelector.setOnCheckedChangeListener(this);
+        mResolutionSelector.setOnItemSelectedListener(this);
 
         //While we are visible, do not go to sleep
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -77,6 +90,33 @@ public class ImageCaptureActivity extends Activity
         super.onPause();
         closeCamera();
     }
+
+    //Handle resolution change requests
+    @Override
+    public void onItemSelected(AdapterView<?> parent, View view,
+                               int position, long id) {
+        setCameraResolution(position);
+    }
+
+    private void setCameraResolution(int selectedPosition) {
+        try {
+            //Image orientation
+            int orientation = mCameraHelper
+                    .getSensorOrientation(getSelectedCameraId());
+            Size imageSize = mResolutionAdapter.getItem(selectedPosition);
+            ImageSaver captureTarget = new ImageSaver(this,
+                    imageSize,
+                    orientation);
+            mCameraCallback.setCaptureTarget(captureTarget);
+
+            mCameraCallback.startPreviewSession();
+        } catch (CameraAccessException e) {
+            Log.w(TAG, "Unable to access camera", e);
+        }
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> parent) { }
 
     //Handle camera selection events
     @Override
@@ -180,12 +220,24 @@ public class ImageCaptureActivity extends Activity
 
                 mCameraCallback = new SingleImageCaptureCallback(mCameraDevice,
                         mPreviewTexture.getSurfaceTexture(),
-                        targetPreviewSize,
-                        mImageSaveTarget);
+                        targetPreviewSize);
 
-                mCameraCallback.startPreviewSession();
+                //Update the list of save sizes for the selected camera
+                StreamConfigurationMap map =
+                        mCameraHelper.getConfiguration(mCameraDevice.getId());
+                mResolutionAdapter.clear();
+                for (Size size : map.getOutputSizes(ImageFormat.JPEG)) {
+                    mResolutionAdapter.add(size);
+                }
+                mResolutionAdapter.notifyDataSetChanged();
+                //If there is already a selection, update resolution here
+                if (mResolutionSelector.getSelectedItemPosition()
+                        != AdapterView.INVALID_POSITION) {
+                    setCameraResolution(
+                            mResolutionSelector.getSelectedItemPosition());
+                }
             } catch (CameraAccessException e) {
-                Log.w(TAG, "Error starting camera preview", e);
+                Log.w(TAG, "Error initializing camera", e);
             }
         }
 
@@ -211,24 +263,6 @@ public class ImageCaptureActivity extends Activity
     private void openCamera() {
         final String cameraId = getSelectedCameraId();
 
-        //Create the save target
-        try {
-            //Image orientation
-            int orientation = mCameraHelper.getSensorOrientation(cameraId);
-
-            //Choose the largest size for the image save
-            StreamConfigurationMap map =
-                    mCameraHelper.getConfiguration(cameraId);
-            Size[] availableSizes = map.getOutputSizes(ImageFormat.JPEG);
-            Size imageSize = availableSizes[0];
-            mImageSaveTarget = new ImageSaver(this,
-                    imageSize,
-                    orientation);
-        } catch (CameraAccessException e) {
-            Log.w(TAG, "Unable to get camera sizes.", e);
-            return;
-        }
-
         try {
             mCameraHelper.openCamera(cameraId, mStateCallback);
         } catch (CameraAccessException e) {
@@ -242,17 +276,13 @@ public class ImageCaptureActivity extends Activity
     private void closeCamera() {
         if (mCameraCallback != null) {
             mCameraCallback.cancelActiveCaptureSession();
+            mCameraCallback.setCaptureTarget(null);
             mCameraCallback = null;
         }
 
         if (mCameraDevice != null) {
             mCameraDevice.close();
             mCameraDevice = null;
-        }
-
-        if (mImageSaveTarget != null) {
-            mImageSaveTarget.close();
-            mImageSaveTarget = null;
         }
     }
 }

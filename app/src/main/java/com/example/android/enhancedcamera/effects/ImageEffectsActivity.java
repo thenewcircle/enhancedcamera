@@ -8,7 +8,6 @@ import android.hardware.camera2.CameraDevice;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Size;
-import android.util.SparseArray;
 import android.view.TextureView;
 import android.view.View;
 import android.view.WindowManager;
@@ -27,7 +26,6 @@ public class ImageEffectsActivity extends Activity
     private static final String TAG =
             ImageEffectsActivity.class.getSimpleName();
 
-    private Spinner mEffectSelector;
     private TextureView mPreviewTexture;
 
     private int[] mSupportedEffects;
@@ -47,7 +45,7 @@ public class ImageEffectsActivity extends Activity
 
         mCameraHelper = new CameraHelper(this);
 
-        mEffectSelector = (Spinner) findViewById(R.id.selector_effects);
+        Spinner effectSelector = (Spinner) findViewById(R.id.selector_effects);
         mPreviewTexture = (TextureView) findViewById(R.id.preview);
 
         if (!discoverCamera()) {
@@ -59,9 +57,9 @@ public class ImageEffectsActivity extends Activity
                 this, android.R.layout.simple_spinner_item, mSupportedEffectNames);
         adapter.setDropDownViewResource(
                 android.R.layout.simple_spinner_dropdown_item);
-        mEffectSelector.setAdapter(adapter);
+        effectSelector.setAdapter(adapter);
 
-        mEffectSelector.setOnItemSelectedListener(this);
+        effectSelector.setOnItemSelectedListener(this);
 
         //While we are visible, do not go to sleep
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -156,7 +154,7 @@ public class ImageEffectsActivity extends Activity
                                int position, long id) {
         int effect = mSupportedEffects[position];
         if (mCameraCallback == null) return;
-        
+
         try {
             mCameraCallback.restartPreview(effect);
         } catch (CameraAccessException e) {

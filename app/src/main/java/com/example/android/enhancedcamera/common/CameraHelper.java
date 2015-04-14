@@ -154,17 +154,11 @@ public class CameraHelper {
     }
 
     /**
-     * Choose the first 4:3 size that is less than 1080p. Some devices
+     * Validate if a size is less than 1080p. Some devices
      * can't handle recording above that resolution.
      */
-    public static Size chooseVideoSize(Size[] choices) {
-        for (Size size : choices) {
-            if (size.getWidth() == size.getHeight() * 4 / 3 && size.getWidth() <= 1080) {
-                return size;
-            }
-        }
-        Log.e(TAG, "Couldn't find any suitable video size");
-        return choices[choices.length - 1];
+    public static boolean verifyVideoSize(Size option) {
+        return (option.getWidth() <= 1080);
     }
 
 }

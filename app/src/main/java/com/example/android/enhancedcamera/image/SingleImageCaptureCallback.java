@@ -48,10 +48,8 @@ public class SingleImageCaptureCallback extends PreviewCallback {
 
     public SingleImageCaptureCallback(CameraDevice device,
                                       SurfaceTexture surface,
-                                      Size targetPreviewSize,
-                                      ImageSaver saver) {
+                                      Size targetPreviewSize) {
         super(device, surface, targetPreviewSize);
-        mCaptureTarget = saver;
     }
 
     //Request for a preview that supports image focus
@@ -69,6 +67,13 @@ public class SingleImageCaptureCallback extends PreviewCallback {
                 CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH);
 
         return builder;
+    }
+
+    public void setCaptureTarget(ImageSaver target) {
+        if (mCaptureTarget != null) {
+            mCaptureTarget.close();
+        }
+        mCaptureTarget = target;
     }
 
     /*
