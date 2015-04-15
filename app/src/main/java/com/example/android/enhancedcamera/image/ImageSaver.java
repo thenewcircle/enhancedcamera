@@ -84,8 +84,6 @@ public class ImageSaver implements ImageReader.OnImageAvailableListener {
         try {
             output = new FileOutputStream(dest);
             output.write(bytes);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         } finally {

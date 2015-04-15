@@ -21,15 +21,16 @@ import com.example.android.enhancedcamera.common.PreviewCallback;
 
 import java.util.Arrays;
 
-public class ImageEffectsActivity extends Activity
-        implements AdapterView.OnItemSelectedListener {
+public class ImageEffectsActivity extends Activity implements
+        TextureView.SurfaceTextureListener,
+        AdapterView.OnItemSelectedListener {
     private static final String TAG =
             ImageEffectsActivity.class.getSimpleName();
 
     private TextureView mPreviewTexture;
 
     private int[] mSupportedEffects;
-    private String[] mSupportedEffectNames;
+    private String[] mEffectNames;
 
     /* Selected Camera Id */
     private String mBackCameraId = null;
@@ -45,7 +46,8 @@ public class ImageEffectsActivity extends Activity
 
         mCameraHelper = new CameraHelper(this);
 
-        Spinner effectSelector = (Spinner) findViewById(R.id.selector_effects);
+        Spinner effectSelector =
+                (Spinner) findViewById(R.id.selector_effects);
         mPreviewTexture = (TextureView) findViewById(R.id.preview);
 
         if (!discoverCamera()) {
@@ -54,7 +56,7 @@ public class ImageEffectsActivity extends Activity
         }
 
         ArrayAdapter<CharSequence> adapter = new ArrayAdapter<CharSequence>(
-                this, android.R.layout.simple_spinner_item, mSupportedEffectNames);
+                this, android.R.layout.simple_spinner_item, mEffectNames);
         adapter.setDropDownViewResource(
                 android.R.layout.simple_spinner_dropdown_item);
         effectSelector.setAdapter(adapter);
@@ -76,8 +78,7 @@ public class ImageEffectsActivity extends Activity
         if (mPreviewTexture.isAvailable()) {
             openCamera();
         } else {
-            mPreviewTexture
-                    .setSurfaceTextureListener(mSurfaceTextureListener);
+            mPreviewTexture.setSurfaceTextureListener(this);
         }
     }
 
@@ -91,27 +92,24 @@ public class ImageEffectsActivity extends Activity
      * Texture creation is asynchronous. We can't handle preview until
      * we have a surface onto which we can render.
      */
-    private TextureView.SurfaceTextureListener mSurfaceTextureListener =
-            new TextureView.SurfaceTextureListener() {
-                @Override
-                public void onSurfaceTextureAvailable(SurfaceTexture surface,
-                                                      int width, int height) {
-                    //Camera is now safe to open
-                    openCamera();
-                }
+    @Override
+    public void onSurfaceTextureAvailable(SurfaceTexture surface,
+                                          int width, int height) {
+        //Camera is now safe to open
+        openCamera();
+    }
 
-                @Override
-                public void onSurfaceTextureSizeChanged(SurfaceTexture surface,
-                                                        int width, int height) { }
+    @Override
+    public void onSurfaceTextureSizeChanged(SurfaceTexture surface,
+                                            int width, int height) { }
 
-                @Override
-                public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-                    return true;
-                }
+    @Override
+    public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+        return true;
+    }
 
-                @Override
-                public void onSurfaceTextureUpdated(SurfaceTexture surface) { }
-            };
+    @Override
+    public void onSurfaceTextureUpdated(SurfaceTexture surface) { }
 
     /** Methods to connect with the camera devices */
 
@@ -129,11 +127,12 @@ public class ImageEffectsActivity extends Activity
         }
 
         try {
-            mSupportedEffects = mCameraHelper.getSupportedEffects(mBackCameraId);
+            mSupportedEffects = mCameraHelper
+                    .getSupportedEffects(mBackCameraId);
             Arrays.sort(mSupportedEffects);
-            mSupportedEffectNames = new String[mSupportedEffects.length];
+            mEffectNames = new String[mSupportedEffects.length];
             for (int i=0; i < mSupportedEffects.length; i++) {
-                mSupportedEffectNames[i] = getEffectName(mSupportedEffects[i]);
+                mEffectNames[i] = getEffectName(mSupportedEffects[i]);
             }
         } catch (CameraAccessException e) {
             Log.w(TAG, "Unable to access camera effects.", e);
@@ -168,47 +167,47 @@ public class ImageEffectsActivity extends Activity
     /*
      * Handle state changes regarding the actual camera device
      */
-    private final CameraDevice.StateCallback mStateCallback =
-            new CameraDevice.StateCallback() {
+    private final CameraDeviceCallback mStateCallback =
+            new CameraDeviceCallback();
+    private class CameraDeviceCallback extends CameraDevice.StateCallback {
+        @Override
+        public void onOpened(CameraDevice cameraDevice) {
+            Log.d(TAG, "StateCallback.onOpened");
+            // The camera is open, we can start a preview here.
+            mCameraDevice = cameraDevice;
 
-                @Override
-                public void onOpened(CameraDevice cameraDevice) {
-                    Log.d(TAG, "StateCallback.onOpened");
-                    // The camera is open, we can start a preview here.
-                    mCameraDevice = cameraDevice;
+            try {
+                //Determine the optimal target preview size
+                Size targetPreviewSize = mCameraHelper.getTargetPreviewSize(
+                        mCameraDevice.getId(),
+                        mPreviewTexture.getWidth(),
+                        mPreviewTexture.getHeight());
 
-                    try {
-                        //Determine the optimal target preview size
-                        Size targetPreviewSize = mCameraHelper.getTargetPreviewSize(
-                                mCameraDevice.getId(),
-                                mPreviewTexture.getWidth(),
-                                mPreviewTexture.getHeight());
+                mCameraCallback = new PreviewCallback(mCameraDevice,
+                        mPreviewTexture.getSurfaceTexture(),
+                        targetPreviewSize);
 
-                        mCameraCallback = new PreviewCallback(mCameraDevice,
-                                mPreviewTexture.getSurfaceTexture(),
-                                targetPreviewSize);
+                mCameraCallback.startPreviewSession();
+            } catch (CameraAccessException e) {
+                Log.w(TAG, "Error starting camera preview", e);
+            }
+        }
 
-                        mCameraCallback.startPreviewSession();
-                    } catch (CameraAccessException e) {
-                        Log.w(TAG, "Error starting camera preview", e);
-                    }
-                }
+        @Override
+        public void onDisconnected(CameraDevice cameraDevice) {
+            Log.d(TAG, "StateCallback.onDisconnected");
+            cameraDevice.close();
+            mCameraDevice = null;
+        }
 
-                @Override
-                public void onDisconnected(CameraDevice cameraDevice) {
-                    Log.d(TAG, "StateCallback.onDisconnected");
-                    cameraDevice.close();
-                    mCameraDevice = null;
-                }
+        @Override
+        public void onError(CameraDevice cameraDevice, int error) {
+            Log.w(TAG, "StateCallback.onError");
+            cameraDevice.close();
+            mCameraDevice = null;
+        }
+    }
 
-                @Override
-                public void onError(CameraDevice cameraDevice, int error) {
-                    Log.w(TAG, "StateCallback.onError");
-                    cameraDevice.close();
-                    mCameraDevice = null;
-                }
-
-            };
     /*
      * Initialize a new camera session
      */

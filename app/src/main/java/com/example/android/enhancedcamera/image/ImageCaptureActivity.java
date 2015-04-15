@@ -22,6 +22,7 @@ import com.example.android.enhancedcamera.common.CameraHelper;
 import com.example.android.enhancedcamera.R;
 
 public class ImageCaptureActivity extends Activity implements
+        TextureView.SurfaceTextureListener,
         RadioGroup.OnCheckedChangeListener,
         AdapterView.OnItemSelectedListener {
     private static final String TAG =
@@ -80,8 +81,7 @@ public class ImageCaptureActivity extends Activity implements
         if (mPreviewTexture.isAvailable()) {
             openCamera();
         } else {
-            mPreviewTexture
-                    .setSurfaceTextureListener(mSurfaceTextureListener);
+            mPreviewTexture.setSurfaceTextureListener(this);
         }
     }
 
@@ -135,27 +135,24 @@ public class ImageCaptureActivity extends Activity implements
      * Texture creation is asynchronous. We can't handle preview until
      * we have a surface onto which we can render.
      */
-    private TextureView.SurfaceTextureListener mSurfaceTextureListener =
-            new TextureView.SurfaceTextureListener() {
-        @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surface,
-                                              int width, int height) {
-            //Camera is now safe to open
-            openCamera();
-        }
+    @Override
+    public void onSurfaceTextureAvailable(SurfaceTexture surface,
+                                          int width, int height) {
+        //Camera is now safe to open
+        openCamera();
+    }
 
-        @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface,
-                                                int width, int height) { }
+    @Override
+    public void onSurfaceTextureSizeChanged(SurfaceTexture surface,
+                                            int width, int height) { }
 
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-            return true;
-        }
+    @Override
+    public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+        return true;
+    }
 
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) { }
-    };
+    @Override
+    public void onSurfaceTextureUpdated(SurfaceTexture surface) { }
 
     /** Methods to connect with the camera devices */
 
@@ -202,9 +199,9 @@ public class ImageCaptureActivity extends Activity implements
     /*
      * Handle state changes regarding the actual camera device
      */
-    private final CameraDevice.StateCallback mStateCallback =
-            new CameraDevice.StateCallback() {
-
+    private final CameraDeviceCallback mStateCallback =
+            new CameraDeviceCallback();
+    private class CameraDeviceCallback extends CameraDevice.StateCallback {
         @Override
         public void onOpened(CameraDevice cameraDevice) {
             Log.d(TAG, "StateCallback.onOpened");
@@ -218,7 +215,8 @@ public class ImageCaptureActivity extends Activity implements
                         mPreviewTexture.getWidth(),
                         mPreviewTexture.getHeight());
 
-                mCameraCallback = new SingleImageCaptureCallback(mCameraDevice,
+                mCameraCallback = new SingleImageCaptureCallback(
+                        mCameraDevice,
                         mPreviewTexture.getSurfaceTexture(),
                         targetPreviewSize);
 
@@ -254,8 +252,7 @@ public class ImageCaptureActivity extends Activity implements
             cameraDevice.close();
             mCameraDevice = null;
         }
-
-    };
+    }
 
     /*
      * Initialize a new camera session

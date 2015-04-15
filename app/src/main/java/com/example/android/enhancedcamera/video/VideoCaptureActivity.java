@@ -26,6 +26,7 @@ import com.example.android.enhancedcamera.common.CameraHelper;
 import java.io.IOException;
 
 public class VideoCaptureActivity extends Activity implements
+        TextureView.SurfaceTextureListener,
         RadioGroup.OnCheckedChangeListener,
         AdapterView.OnItemSelectedListener {
     private static final String TAG =
@@ -89,8 +90,7 @@ public class VideoCaptureActivity extends Activity implements
         if (mPreviewTexture.isAvailable()) {
             openCamera();
         } else {
-            mPreviewTexture
-                    .setSurfaceTextureListener(mSurfaceTextureListener);
+            mPreviewTexture.setSurfaceTextureListener(this);
         }
     }
 
@@ -154,27 +154,24 @@ public class VideoCaptureActivity extends Activity implements
      * Texture creation is asynchronous. We can't handle preview until
      * we have a surface onto which we can render.
      */
-    private TextureView.SurfaceTextureListener mSurfaceTextureListener =
-            new TextureView.SurfaceTextureListener() {
-                @Override
-                public void onSurfaceTextureAvailable(SurfaceTexture surface,
-                                                      int width, int height) {
-                    //Camera is now safe to open
-                    openCamera();
-                }
+    @Override
+    public void onSurfaceTextureAvailable(SurfaceTexture surface,
+                                          int width, int height) {
+        //Camera is now safe to open
+        openCamera();
+    }
 
-                @Override
-                public void onSurfaceTextureSizeChanged(SurfaceTexture surface,
-                                                        int width, int height) { }
+    @Override
+    public void onSurfaceTextureSizeChanged(SurfaceTexture surface,
+                                            int width, int height) { }
 
-                @Override
-                public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
-                    return true;
-                }
+    @Override
+    public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {
+        return true;
+    }
 
-                @Override
-                public void onSurfaceTextureUpdated(SurfaceTexture surface) { }
-            };
+    @Override
+    public void onSurfaceTextureUpdated(SurfaceTexture surface) { }
 
     /** Methods to connect with the camera devices */
 
@@ -234,63 +231,62 @@ public class VideoCaptureActivity extends Activity implements
     /*
      * Handle state changes regarding the actual camera device
      */
-    private final CameraDevice.StateCallback mStateCallback =
-            new CameraDevice.StateCallback() {
+    private final CameraDeviceCallback mStateCallback =
+            new CameraDeviceCallback();
+    private class CameraDeviceCallback extends CameraDevice.StateCallback {
+        @Override
+        public void onOpened(CameraDevice cameraDevice) {
+            Log.d(TAG, "StateCallback.onOpened");
+            // The camera is open, we can start a preview here.
+            mCameraDevice = cameraDevice;
 
-                @Override
-                public void onOpened(CameraDevice cameraDevice) {
-                    Log.d(TAG, "StateCallback.onOpened");
-                    // The camera is open, we can start a preview here.
-                    mCameraDevice = cameraDevice;
+            try {
+                //Determine the optimal target preview size
+                Size targetPreviewSize = mCameraHelper.getTargetPreviewSize(
+                        mCameraDevice.getId(),
+                        mPreviewTexture.getWidth(),
+                        mPreviewTexture.getHeight());
 
-                    try {
-                        //Determine the optimal target preview size
-                        Size targetPreviewSize = mCameraHelper.getTargetPreviewSize(
-                                mCameraDevice.getId(),
-                                mPreviewTexture.getWidth(),
-                                mPreviewTexture.getHeight());
+                mCameraCallback = new VideoCaptureCallback(mCameraDevice,
+                        mPreviewTexture.getSurfaceTexture(),
+                        targetPreviewSize);
 
-                        mCameraCallback = new VideoCaptureCallback(mCameraDevice,
-                                mPreviewTexture.getSurfaceTexture(),
-                                targetPreviewSize);
-
-                        //Update list of available sizes
-                        StreamConfigurationMap map = mCameraHelper
-                                .getConfiguration(mCameraDevice.getId());
-                        mResolutionAdapter.clear();
-                        for (Size size : map.getOutputSizes(MediaRecorder.class)) {
-                            //Add items that are safe to record
-                            if (CameraHelper.verifyVideoSize(size)) {
-                                mResolutionAdapter.add(size);
-                            }
-                        }
-                        mResolutionAdapter.notifyDataSetChanged();
-                        //If there is already a selection, update resolution here
-                        if (mResolutionSelector.getSelectedItemPosition()
-                                != AdapterView.INVALID_POSITION) {
-                            setCameraResolution(
-                                    mResolutionSelector.getSelectedItemPosition());
-                        }
-                    } catch (CameraAccessException e) {
-                        Log.w(TAG, "Error starting camera preview", e);
+                //Update list of available sizes
+                StreamConfigurationMap map = mCameraHelper
+                        .getConfiguration(mCameraDevice.getId());
+                mResolutionAdapter.clear();
+                for (Size size : map.getOutputSizes(MediaRecorder.class)) {
+                    //Add items that are safe to record
+                    if (CameraHelper.verifyVideoSize(size)) {
+                        mResolutionAdapter.add(size);
                     }
                 }
-
-                @Override
-                public void onDisconnected(CameraDevice cameraDevice) {
-                    Log.d(TAG, "StateCallback.onDisconnected");
-                    cameraDevice.close();
-                    mCameraDevice = null;
+                mResolutionAdapter.notifyDataSetChanged();
+                //If there is already a selection, update resolution here
+                if (mResolutionSelector.getSelectedItemPosition()
+                        != AdapterView.INVALID_POSITION) {
+                    setCameraResolution(
+                            mResolutionSelector.getSelectedItemPosition());
                 }
+            } catch (CameraAccessException e) {
+                Log.w(TAG, "Error starting camera preview", e);
+            }
+        }
 
-                @Override
-                public void onError(CameraDevice cameraDevice, int error) {
-                    Log.w(TAG, "StateCallback.onError");
-                    cameraDevice.close();
-                    mCameraDevice = null;
-                }
+        @Override
+        public void onDisconnected(CameraDevice cameraDevice) {
+            Log.d(TAG, "StateCallback.onDisconnected");
+            cameraDevice.close();
+            mCameraDevice = null;
+        }
 
-            };
+        @Override
+        public void onError(CameraDevice cameraDevice, int error) {
+            Log.w(TAG, "StateCallback.onError");
+            cameraDevice.close();
+            mCameraDevice = null;
+        }
+    }
 
     /*
      * Initialize a new camera session

@@ -112,37 +112,44 @@ public class PreviewCallback {
         Surface surface = new Surface(mPreviewSurface);
 
         // We set up a CaptureRequest.Builder with the output Surface.
-        final CaptureRequest.Builder builder = getPreviewRequestBuilder();
+        CaptureRequest.Builder builder = getPreviewRequestBuilder();
         builder.addTarget(surface);
 
         // Here, we create a CameraCaptureSession for camera preview.
         getCameraDevice().createCaptureSession(getCaptureTargets(),
-                new CameraCaptureSession.StateCallback() {
+                new PreviewSessionCallback(builder), null);
+    }
 
-                    @Override
-                    public void onConfigured(CameraCaptureSession cameraCaptureSession) {
-                        // The camera is already closed
-                        if (null == getCameraDevice()) {
-                            return;
-                        }
+    //Callback to react to creation of the preview session
+    private class PreviewSessionCallback
+            extends CameraCaptureSession.StateCallback {
+        private final CaptureRequest.Builder mBuilder;
+        public PreviewSessionCallback(CaptureRequest.Builder builder) {
+            mBuilder = builder;
+        }
 
-                        // When the session is ready, we start displaying the preview.
-                        setActiveCaptureSession(cameraCaptureSession);
-                        try {
-                            // Finally, we start displaying the camera preview.
-                            CaptureRequest previewRequest = builder.build();
-                            getActiveCaptureSession().setRepeatingRequest(previewRequest,
-                                    null, null);
-                        } catch (CameraAccessException e) {
-                            e.printStackTrace();
-                        }
-                    }
+        @Override
+        public void onConfigured(CameraCaptureSession captureSession) {
+            // The camera is already closed
+            if (null == getCameraDevice()) {
+                return;
+            }
 
-                    @Override
-                    public void onConfigureFailed(CameraCaptureSession cameraCaptureSession) {
-                        Log.w(TAG, "Failed to Create Camera Preview");
-                    }
-                }, null
-        );
+            // When the session is ready, we start displaying the preview.
+            setActiveCaptureSession(captureSession);
+            try {
+                // Finally, we start displaying the camera preview.
+                CaptureRequest previewRequest = mBuilder.build();
+                getActiveCaptureSession().setRepeatingRequest(previewRequest,
+                        null, null);
+            } catch (CameraAccessException e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        public void onConfigureFailed(CameraCaptureSession captureSession) {
+            Log.w(TAG, "Failed to Create Camera Preview");
+        }
     }
 }
